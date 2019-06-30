@@ -1,7 +1,6 @@
 import json
 from twython import Twython
-from twython import TwythonStreamer
-import queue
+from collections import OrderedDict
 from time import sleep
 
 with open('identity.json') as token_file:
@@ -12,33 +11,43 @@ with open('identity.json') as token_file:
     OAUTH_TOKEN_SECRET = identity['OAUTH_TOKEN_SECRET']
 
 
-color_q = queue.Queue()
-class MyStreamer(TwythonStreamer):
+user_reqested_color_dict = OrderedDict()
 
-    def on_success(self, data):
-        self.disconnect()
-        for color in ['red', 'blue', 'purple', 'green', 'yellow']:
-            if(color in data['text']):
-                print("found " + color)
-                color_q.put(color)
-                print(color_q.qsize())
-        return
+def set_color(color_name):
+    for color in ['red', 'blue', 'purple', 'green', 'yellow', 'white']:
+        if color in color_name:
+            print("color_name " + color_name)
+            #actually set the RGBW color on the leds
 
-    def on_error(self, status_code, data):
-        print(status_code)
-        sleep(1)
-
-    def set_color(self, color_name):
-        print("color_name " + color_name)
-        #actually set the RGBW color on the leds
-        return
+def use_ml_color():
+    print("using ML color")
+    # put model in
+    # define colors/fades
 
 twitter = Twython(APP_KEY, APP_SECRET,
                     OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 while True:
     print("starting")
-    results = twitter.get_mentions_timeline(since_id = 1000000000000)
+    if user_reqested_color_dict:
+        k, v = user_reqested_color_dict.popitem(last=False)
+        set_color(v)
+    else:
+        use_ml_color()
+    since_id = 0
+    process_list = list(user_reqested_color_dict.keys())
+    if len(process_list) > 0:
+        since_id = process_list[-1]
+    print("since_id " + str(since_id))
+    results = []
+    if since_id == 0:
+        results = twitter.get_mentions_timeline()
+        results.reverse()
+    else:
+        results = twitter.get_mentions_timeline(since_id = since_id)
+        
     for result in results:
-        print(result['user']['screen_name'] + " " + result['text'])
-    print("sleeping so not to get rate-limited")
+        if result['id'] not in user_reqested_color_dict.keys():
+            user_reqested_color_dict[result['id']] = result['text']
+            print(result['user']['screen_name'] + " " + result['text'])
+    print("sleeping so as not to get throttled")
     sleep(13)
