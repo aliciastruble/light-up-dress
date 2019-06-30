@@ -1,6 +1,9 @@
 import json
 from twython import Twython
 from collections import OrderedDict
+
+import matplotlib.pyplot as plt
+from matplotlib import colors as mcolors
 from time import sleep
 
 with open('identity.json') as token_file:
@@ -10,11 +13,15 @@ with open('identity.json') as token_file:
     OAUTH_TOKEN = identity['OAUTH_TOKEN']
     OAUTH_TOKEN_SECRET = identity['OAUTH_TOKEN_SECRET']
 
-
+# with open('colors.csv','w') as color_file:
+#     for color in mcolors.XKCD_COLORS:
+#         color_file.write(color+"\n")
+#         print(mcolors.to_rgba(color))
 user_reqested_color_dict = OrderedDict()
+OFFICIAL_COLORS = {color[5:] for color in mcolors.XKCD_COLORS}
 
 def set_color(color_name):
-    for color in ['red', 'blue', 'purple', 'green', 'yellow', 'white']:
+    for color in OFFICIAL_COLORS:
         if color in color_name:
             print("color_name " + color_name)
             #actually set the RGBW color on the leds
@@ -26,6 +33,7 @@ def use_ml_color():
 
 twitter = Twython(APP_KEY, APP_SECRET,
                     OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+since_id = 0
 while True:
     print("starting")
     if user_reqested_color_dict:
@@ -33,7 +41,6 @@ while True:
         set_color(v)
     else:
         use_ml_color()
-    since_id = 0
     process_list = list(user_reqested_color_dict.keys())
     if len(process_list) > 0:
         since_id = process_list[-1]
